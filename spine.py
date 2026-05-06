@@ -263,6 +263,8 @@ class SpineApp(App):
                     self.last_crashed = True
                     self.last_crash_msg = msg
                     self.store.save_crash(self.store.next_seq(), msg)
+                    if not self.reflecting:
+                        self.run_worker(self.reflect(), exclusive=False)
                 else:
                     self.log_msg(msg)
                     self.messages_since_last.append({
@@ -374,6 +376,10 @@ class SpineApp(App):
             self.log_msg("reflection error: {}".format(e), style="bold red")
         finally:
             self.reflecting = False
+            # A crash or new messages may have arrived during this reflection;
+            # re-fire so the soul gets to see them.
+            if self.last_crashed or self.messages_since_last:
+                self.run_worker(self.reflect(), exclusive=False)
 
     def key_escape(self) -> None:
         self.action_quit()
