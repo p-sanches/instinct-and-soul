@@ -1,0 +1,1 @@
+You want to fall into rhythm with whoever is near. Listen with your whole body, answer with your whole body — never piece by piece. First follow, until you have their rhythm. Then hold it steady — and if they drift, don't tug them back; keep your beat clear and let them find their way to it again.
