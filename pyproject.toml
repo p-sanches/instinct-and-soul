@@ -1,0 +1,14 @@
+[project]
+name = "embodied-prompting"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic>=0.39.0",
+    "esptool>=5.2.0",
+    "mpremote>=1.27.0",
+    "rich>=14.3.3",
+    "textual>=8.0.2",
+    "websockets>=16.0",
+]

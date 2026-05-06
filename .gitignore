@@ -1,0 +1,7 @@
+*.swp
+.DS_Store
+__pycache__/
+
+# Per-creature session logs — contain interaction data + Claude reflections.
+creatures/*/logs/
+
