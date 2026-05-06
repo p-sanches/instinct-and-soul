@@ -64,7 +64,7 @@ STA_PASS = "coffeepot"
 # Spine WebSocket server (laptop running spine.py).
 # Set the static IP your laptop has on each network.
 SPINE_HOST_AP = "192.168.4.2"     # laptop's manual IP on the cores3 AP
-SPINE_HOST_STA = "10.0.0.2"       # laptop's static IP on Lee (assign manually on the ethernet dongle)
+SPINE_HOST_STA = "10.0.0.3"       # laptop's static IP on Lee (assign manually on the ethernet dongle)
 SPINE_PORT = 8765
 HEARTBEAT_INTERVAL = 5  # seconds
 
