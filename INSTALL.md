@@ -1,11 +1,21 @@
 ## install the software
 
+
 ```
-uv init
-uv venv
+git clone git@github.com:daan/instinct-and-soul.git
+cd instinct-and-soul
+uv sync
 source .venv/bin/activate
-uv add esptool mpremote rich textual anthropic websockets
 ```
+
+## connection to LLM
+
+For running the "spine" add your anthropic api key:
+
+```
+export ANTHROPIC_API_KEY=<your key>
+```
+
 
 ## creatures
 
@@ -25,6 +35,12 @@ Run the spine pointed at a creature:
 ```
 python spine.py creatures/touchy-pebble
 python spine.py creatures/touchy-pebble --resume   # continue last session
+```
+
+To tune a creature (no llm required)
+
+```
+make tune CREATURE=creatures/cores3    
 ```
 
 To make a new variant, copy a creature folder and edit `character.md` / `seed_soul.md`.
@@ -47,15 +63,21 @@ mpremote connect /dev/<your device> reset
 
 Update the WiFi/spine config section near the top of `creatures/touchy-pebble/main.py` first.
 
-## prepare the M5StickS3 (creatures/m5sticks3)
+## prepare the stackm5 STACKS3 (creatures/m5sticks3) or the CORES3
 
-Flash the M5Stack UIFlow MicroPython firmware (UIFlow build for StampS3 / StickS3). UIFlow runs `boot.py` then `main.py`, so we just upload `main.py`:
+Flash the M5Stack UIFlow MicroPython firmware using the [M5Burner](https://docs.m5stack.com/en/uiflow/m5burner/intro). Edit "boot.py" to directly run main.py. Instructions are in boot.py comments and use [Thonny](https://thonny.org/) for convienience.
+
+UIFlow runs `boot.py` then `main.py`, so we just upload `main.py`:
 
 ```
 ls /dev/tty.usbmodem*                       # find the port
 mpremote connect /dev/<your device> cp creatures/m5sticks3/main.py :main.py
 mpremote connect /dev/<your device> reset
 ```
+
+## network settings
+
+You need to connect both to the LLM and to the device. I tested the creatures on a local wifi network and assigned a static ip to my laptop.
 
 Edit the `MODE` / `AP_*` / `STA_*` block at the top of `creatures/m5sticks3/main.py` before uploading.
 

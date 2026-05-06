@@ -10,7 +10,7 @@ We demonstrate the architecture through two physical forms sharing the same char
 
 ## Quick Start
 
-The system is designed with an esp32c3 micro controller running micropython. Alternatively, use an M5StickS3 (or other M5Stack device) with a vibration hat. See the [hardware documentation](PROTOTYPE.md) for building the hardware.
+The system is designed for micro controllers running micropython and have a wifi network. I tested "creatures with esp32c3 or esp32s3 micro controllers, such as the seeed studio XIAO and M5STACK STICKS3 and CORES3. 
 
 Start with the [installation guide](INSTALL.md) for detailed instructions.
 
