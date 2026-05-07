@@ -28,7 +28,7 @@ import time
 import websockets
 import anthropic
 from textual.app import App, ComposeResult
-from textual.widgets import RichLog, Static
+from textual.widgets import Input, RichLog, Static
 
 PORT = 8765
 HEARTBEAT_TIMEOUT = 12
@@ -181,6 +181,10 @@ class SpineApp(App):
         height: 1fr;
         border: solid $primary;
     }
+    #command {
+        dock: bottom;
+        height: 3;
+    }
     """
 
     BINDINGS = [("ctrl+c", "quit", "Quit"), ("escape", "quit", "Quit"), ("ctrl+q", "quit", "Quit")]
@@ -235,6 +239,7 @@ class SpineApp(App):
     def compose(self) -> ComposeResult:
         yield Static("● disconnected", id="status")
         yield RichLog(id="log", highlight=True, markup=True)
+        yield Input(placeholder="operator command (e.g. molt)…", id="command")
 
     def on_mount(self) -> None:
         self.run_worker(self.ws_server(), exclusive=False)
@@ -347,7 +352,7 @@ class SpineApp(App):
         try:
             response = await self.client.messages.create(
                 model="claude-sonnet-4-6",
-                max_tokens=4096,
+                max_tokens=16384,
                 system=[
                     {
                         "type": "text",
@@ -427,6 +432,22 @@ class SpineApp(App):
             # re-fire so the soul gets to see them.
             if self.last_crashed or self.messages_since_last:
                 self.run_worker(self.reflect(), exclusive=False)
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        text = event.value.strip()
+        if not text:
+            return
+        event.input.value = ""
+        # Operator commands enter the soul's reflection like a creature message,
+        # but tagged so the soul can tell them apart from embodied observations.
+        tagged = "OPERATOR: " + text
+        self.log_msg("⮕ " + tagged, style="bold yellow")
+        self.messages_since_last.append({
+            "ts": int(time.time()),
+            "content": tagged,
+        })
+        if not self.reflecting:
+            self.run_worker(self.reflect(), exclusive=False)
 
     def key_escape(self) -> None:
         self.action_quit()
