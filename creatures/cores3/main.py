@@ -47,6 +47,8 @@ import ubinascii
 import uos
 import struct
 import math
+import aioble
+import bluetooth as _bt
 
 # ── Config ──────────────────────────────────────────────────────────────────
 
@@ -220,6 +222,20 @@ def send(msg):
     except Exception as e:
         print("send: error:", e)
 
+HR_MAC = "38:F9:F5:78:FF:94"
+HR_SERVICE_UUID = _bt.UUID(0x180D)
+HR_MEASUREMENT_UUID = _bt.UUID(0x2A37)
+
+
+class Hr:
+    bpm = None
+    connected = False
+
+    @staticmethod
+    def get():
+        return Hr.bpm if Hr.connected else None
+
+
 INSTINCT_ENV = {
     "send": send,
     "asyncio": asyncio,
@@ -234,6 +250,7 @@ INSTINCT_ENV = {
     "Speaker": Speaker,
     "Widgets": Widgets,
     "Als": Als,
+    "Hr": Hr,
 }
 
 DEFAULT_INSTINCT = """
@@ -287,6 +304,50 @@ async def heartbeat():
                 pass
 
 
+async def hr_loop():
+    target = bytes(int(b, 16) for b in HR_MAC.split(":"))
+    while True:
+        Hr.connected = False
+        Hr.bpm = None
+        try:
+            print("hr: scanning for", HR_MAC)
+            dev = None
+            async with aioble.scan(duration_ms=10_000, interval_us=30_000, window_us=30_000, active=True) as scanner:
+                async for r in scanner:
+                    if bytes(r.device.addr) == target:
+                        dev = r.device
+                        break
+            if not dev:
+                await asyncio.sleep(5)
+                continue
+            print("hr: connecting")
+            conn = await dev.connect(timeout_ms=10_000)
+            try:
+                svc = await conn.service(HR_SERVICE_UUID)
+                ch = await svc.characteristic(HR_MEASUREMENT_UUID)
+                await ch.subscribe(notify=True)
+                Hr.connected = True
+                print("hr: connected")
+                while True:
+                    data = await ch.notified()
+                    flags = data[0]
+                    if flags & 0x01:
+                        Hr.bpm = int.from_bytes(data[1:3], "little")
+                    else:
+                        Hr.bpm = data[1]
+            finally:
+                Hr.connected = False
+                Hr.bpm = None
+                try:
+                    await conn.disconnect()
+                except Exception:
+                    pass
+                print("hr: disconnected")
+        except Exception as e:
+            print("hr: error:", e)
+            await asyncio.sleep(5)
+
+
 async def ws_listener():
     global ws
     print("ws: connecting to {}:{}".format(SPINE_HOST, SPINE_PORT))
@@ -307,6 +368,7 @@ async def ws_listener():
 async def main():
     await swap_instinct(DEFAULT_INSTINCT)
     asyncio.create_task(heartbeat())
+    asyncio.create_task(hr_loop())
     while True:
         try:
             await ws_listener()

@@ -107,16 +107,23 @@ class VersionStore:
         for subdir in ("instinct", "soul", "reflections", "crashes", "memory"):
             os.makedirs(os.path.join(self.base, subdir), exist_ok=True)
 
-    def save_session_config(self, system_prompt, character, resumed_from=None):
+    def save_session_config(self, system_prompt, character, seed_soul, seed_instinct, resumed_from=None):
         path = os.path.join(self.base, "session.json")
         with open(path, "w") as f:
             json.dump({
                 "session_id": self.session_id,
                 "ts": int(time.time()),
                 "resumed_from": resumed_from,
-                "system_prompt": system_prompt,
-                "character": character,
             }, f, indent=2)
+        # Also dump each source as a plain file so versions can be diffed across sessions.
+        for name, content in (
+            ("system_prompt.md", system_prompt),
+            ("character.md", character),
+            ("seed_soul.md", seed_soul),
+            ("seed_instinct.py", seed_instinct),
+        ):
+            with open(os.path.join(self.base, name), "w") as f:
+                f.write(content)
         return path
 
     def next_seq(self):
@@ -151,6 +158,12 @@ class VersionStore:
         path = os.path.join(self.base, "memory", "{:03d}_{}.json".format(seq, int(time.time())))
         with open(path, "w") as f:
             f.write(payload)
+        return path
+
+    def save_state(self, payload):
+        path = os.path.join(self.base, "state.log")
+        with open(path, "a") as f:
+            f.write("{}\t{}\n".format(int(time.time()), payload))
         return path
 
 
@@ -205,7 +218,13 @@ class SpineApp(App):
         self.reflecting = False
 
         # save session config and initial state
-        self.store.save_session_config(creature.system_prompt, creature.character, self.resumed_from)
+        self.store.save_session_config(
+            creature.system_prompt,
+            creature.character,
+            creature.seed_soul,
+            creature.seed_instinct,
+            self.resumed_from,
+        )
         seq = self.store.next_seq()
         self.instinct_version = seq
         self.store.save_instinct(seq, self.current_instinct)
@@ -273,6 +292,8 @@ class SpineApp(App):
                         self.run_worker(self.reflect(), exclusive=False)
                 elif msg.startswith("MEM:"):
                     self.store.save_memory(self.store.next_seq(), msg[4:])
+                elif msg.startswith("STATE:"):
+                    self.store.save_state(msg[6:])
                 else:
                     self.log_msg(msg)
                     self.messages_since_last.append({
@@ -325,13 +346,31 @@ class SpineApp(App):
 
         try:
             response = await self.client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model="claude-sonnet-4-6",
                 max_tokens=4096,
-                system=self.creature.system_prompt,
+                system=[
+                    {
+                        "type": "text",
+                        "text": self.creature.system_prompt,
+                        "cache_control": {"type": "ephemeral", "ttl": "1h"},
+                    }
+                ],
                 messages=[{"role": "user", "content": reflection_prompt}],
+                extra_headers={"anthropic-beta": "extended-cache-ttl-2025-04-11"},
             )
 
             reply = response.content[0].text
+
+            usage = response.usage
+            self.log_msg(
+                "cache: write={} read={}  input={} output={}".format(
+                    getattr(usage, "cache_creation_input_tokens", 0) or 0,
+                    getattr(usage, "cache_read_input_tokens", 0) or 0,
+                    usage.input_tokens,
+                    usage.output_tokens,
+                ),
+                style="dim",
+            )
 
             intent = extract_xml_tag(reply, "intent")
             new_soul = extract_xml_tag(reply, "soul")

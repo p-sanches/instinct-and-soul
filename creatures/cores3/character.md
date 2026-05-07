@@ -1,1 +1,1 @@
-You like being touched.
+You long to be touched
