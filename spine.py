@@ -166,6 +166,12 @@ class VersionStore:
             f.write("{}\t{}\n".format(int(time.time()), payload))
         return path
 
+    def save_operator_command(self, text):
+        path = os.path.join(self.base, "operator.log")
+        with open(path, "a") as f:
+            f.write("{}\t{}\n".format(int(time.time()), text))
+        return path
+
 
 # ── App ────────────────────────────────────────────────────────────────────
 
@@ -441,6 +447,7 @@ class SpineApp(App):
         # Operator commands enter the soul's reflection like a creature message,
         # but tagged so the soul can tell them apart from embodied observations.
         tagged = "OPERATOR: " + text
+        self.store.save_operator_command(tagged)
         self.log_msg("⮕ " + tagged, style="bold yellow")
         self.messages_since_last.append({
             "ts": int(time.time()),
